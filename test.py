@@ -111,6 +111,9 @@ ofile = './output/flat.html'
 #dfout = df[df['room'] != 'retired']
 #dfout = dfout[dfout['room'] != 'retire'] 
 #dfout = dfout[dfout['room'] != 'UNK']
+
+df.room.str.contains('retire')
+
 dumplist = ['retire','retired','UNK','combine']
 mask = df.room.isin( dumplist)
 dfout = df[mask]
