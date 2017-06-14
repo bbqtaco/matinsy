@@ -2,7 +2,7 @@ import tkinter as tk
 import sqlite3
 import numpy as np
 import pandas as pd
-
+from os import system, path
 dbfile = 'db/cheminventory.db'
 
 conn = sqlite3.connect(dbfile)
@@ -54,11 +54,47 @@ def getregtype(CAS,dbfile):
     c.close()
     return regtype  #chemname,CAS,reorder,CATID
 
+def getsdsfilename(CAS,reorder):
+    #conn = sqlite3.connect(dbfile)
+    #c = conn.cursor()
+    #c.execute('select reorder,CAS from Bot where CATID=?',[CATID])
+    #tmp = c.fetchall()
+    #if tmp1:
+    #    reorder = tmp1[0][0]
+    #else:
+    #    reorder = 'none'
+    #CAS = tmp1[0][1]
+    #print(CATID,'tmp',tmp1[0])
+    
+    #conn.commit()
+    #c.close()
+    if CAS ==None:
+        CAS = 'none' #generic
+    msdsbase = './html/'
+    if reorder==None:
+        reorder='none' #generic
+    tmp = msdsbase + CAS+'_'+reorder
+    if tmp[-4:] == 'none':
+        fname = tmp[:-5]
+    else:
+        fname = tmp
+
+    fname += '.pdf'
+    sdsfilename = fname
+    link = '<A HREF='+fname+'>'+'LINK'+'</A>'
+    if path.isfile(fname) == True:
+        pass
+    else:
+        missing = fname
+    return link,missing
+
+
 df= pd.DataFrame.from_dict(d,orient='index')
 df.rename(columns={0:'room',1:'CAS',2:'reorder',3:'name'},inplace=True)
 df.index.name = 'CATID'
 df['regtype'] = 'none'
-
+df['msds_file'] = 'none'
+df['missing info'] = 'none'
 
 roomsdf = df.room.unique()
 roomslist = roomsdf.tolist()
@@ -74,12 +110,17 @@ CAS = 'na4'
 CAS = '1-0-0001'
 regtype = getregtype(CAS,dbfile)
 
+missinglist = []
 for CATID in df.index:
-    #print(CATID)
+    #print('CATID',CATID)
     CAS = df.loc[CATID].CAS
+    reorder = df.loc[CATID].reorder
     regtype = getregtype(CAS,dbfile)
+    link,missing = getsdsfilename(CAS,reorder)
+    missinglist.append(missing)
     df.set_value(CATID,'regtype',regtype)
-
+    df.set_value(CATID,'msds_file',link)
+    df.set_value(CATID,'missing info',missing)
 
 def highlight_vals(val):
     if val != 'none':
@@ -95,14 +136,14 @@ def color_negative_red(val):
     color = 'red' if val != 'none' else 'black'
     return 'color: %s'.format(color)
 
-df = df.sort_values('room')
+#df = df.sort_values('room')
 
 #df.style.applymap(color_negative_red,subset=['regtype'])
 #df.style.set_properties(**{'background-color': 'black',
 #                           'color': 'lawngreen',
 #                           'border-color': 'white'})
 #significant = lambda x: '<span class="significant">%f</span>' % x if x<0.05 else str(x)
-ofile = './output/flat.html'
+
 #table = df.to_html(formatters={'regtype':lambda x: color_negative_red(x)})
 
 #table = df.to_html(formatters={'regtype':lambda x: highlight_vals(x)},escape=False)
@@ -112,11 +153,16 @@ ofile = './output/flat.html'
 #dfout = dfout[dfout['room'] != 'retire'] 
 #dfout = dfout[dfout['room'] != 'UNK']
 
-df.room.str.contains('retire')
+#df.room.str.contains('retire*')
 
-dumplist = ['retire','retired','UNK','combine']
-mask = df.room.isin( dumplist)
-dfout = df[mask]
+dumplist = ['retire*','UNK','combine','neut','Unk']
+mask = df.room.notnull()
+for item in dumplist:
+    mask = mask & ~df.room.str.contains(item)
+    
+#mask = df.room.isin( dumplist)
+dfout = df[mask].sort_values('room')
+
 #f = open(ofile, 'w')
 #f.write( tp)
 #f.write( hd)
@@ -134,7 +180,29 @@ dfout = df[mask]
 #    tmpcatid,tmpreg = coimodbyroom(CAS,dbfile)
 #    tmpdreg
 #select RegType from Coi where CAS =  '993-43-1';
+
+##output flat
+ofile = './output/flat.html'
 with open(ofile, 'w') as f:
     f.write( tp)
     f.write(dfout.style.applymap(highlight_vals, subset=['regtype']).set_table_attributes("border=1").render())
     f.write(dn)
+
+def writehtml(ofile,df):
+    tp = '<HTML>\n <HEAD><TITLE>SDS chemical inventory  </TITLE></HEAD>\n<BODY>\n<H1 style=\"color:red\" > Links in RED are Potentially Hazardous Substances</H1>\n<H2>See the last words in each red link for additional info</H2>\n'
+
+    dn = '</BODY>\n </HTML>\n'
+    with open(ofile, 'w') as f:
+        f.write( tp)
+        f.write(df.style.applymap(highlight_vals, subset=['regtype']).set_table_attributes("border=1").render())
+        f.write(dn)
+
+##output room files
+roomsarray = dfout.room.unique()
+rooms = roomsarray.tolist()
+rooms.remove('')
+
+for room in rooms:
+    dfroomout = dfout[dfout.room == room]
+    ofile = './output/sds_'+room +'.html'
+    writehtml(ofile,dfroomout.sort_values('name'))
