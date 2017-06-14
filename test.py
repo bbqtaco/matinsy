@@ -3,6 +3,8 @@ import sqlite3
 import numpy as np
 import pandas as pd
 from os import system, path
+import glob
+
 dbfile = 'db/cheminventory.db'
 
 conn = sqlite3.connect(dbfile)
@@ -206,3 +208,32 @@ for room in rooms:
     dfroomout = dfout[dfout.room == room]
     ofile = './output/sds_'+room +'.html'
     writehtml(ofile,dfroomout.sort_values('name'))
+
+
+##write master sds file
+tp = '<HTML>\n <HEAD><TITLE>SDS chemical inventory  </TITLE></HEAD>\n<BODY>\n<H1 style=\"color:red\" > Links in RED are Potentially Hazardous Substances</H1>\n<H2>See the last words in each red link for additional info</H2>\n'
+dn = '</BODY>\n </HTML>\n'
+lt = '<UL>'
+le = '</UL>'
+li = '<LI>'
+ofile = './output/index.html'
+htmlbase='./'
+files =  glob.glob("./output/sds_*.html")
+f = open(ofile, 'w')
+f.write( tp)
+f.write(lt)
+for file in np.sort(files):
+    print(file)
+    room = file.split('_')[1].split('.')[0]
+    pathfile = htmlbase+file.split('/')[-1]
+    link = li+'<A HREF='+pathfile+'>'+room+'</A>\n'
+    print(room)
+    f.write(link)
+f.write(le)
+f.write(dn)
+f.close()
+#if path.isfile(fname) == True:
+#    pass
+#else:
+#    missing = fname
+
