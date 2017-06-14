@@ -222,6 +222,8 @@ files =  glob.glob("./output/sds_*.html")
 f = open(ofile, 'w')
 f.write( tp)
 f.write(lt)
+flatlink = li+'<A HREF=./flat.html>flat</A>\n'
+f.write(flatlink)
 for file in np.sort(files):
     print(file)
     room = file.split('_')[1].split('.')[0]
