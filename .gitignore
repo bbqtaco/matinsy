@@ -99,3 +99,9 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+public_html/
+db/
+safetyplans/
+msdsmount/
+output/
