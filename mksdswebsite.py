@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[1]:
+# In[25]:
 
 import tkinter as tk
 import sqlite3
@@ -170,7 +170,7 @@ def getsoplinks(room):
 #file
 
 
-# In[25]:
+# In[5]:
 
 def getstorage(CAS,dbfile):
     conn = sqlite3.connect(dbfile)
@@ -362,7 +362,7 @@ def getallbots(dbfile):
     return d
 
 
-# In[32]:
+# In[6]:
 
 
 d = getallbots(dbfile)
@@ -437,7 +437,7 @@ dfout = df[mask].sort_values('room')
 #    missing = fname
 
 
-# In[33]:
+# In[7]:
 
 #dfout
 #CAS = '110-82-7'
@@ -453,7 +453,7 @@ dfout = df[mask].sort_values('room')
 #        hazdict[CAS] = [H,F,R,S]
 
 
-# In[34]:
+# In[8]:
 
 #Hdf = pd.DataFrame(hazdict).T
 #Hdf.rename(columns={0:'H',1:'F',2:'R',3:'S'},inplace=True)
@@ -535,7 +535,7 @@ dfout = df[mask].sort_values('room')
 #print(roomdf)
 
 
-# In[35]:
+# In[9]:
 
 tp = '<HTML>\n <HEAD><TITLE>SDS chemical inventory searchable </TITLE></HEAD>\n<BODY>\n<H1 style=\"color:red\" > College of Arts and Sciences Chemical Inventory</H1>\n<H2>Survey for Acknowlegment link of Safety Training</H2> <a href="https://wcu.az1.qualtrics.com/jfe/form/SV_9AIPM7mTueMaA8B">Survey Link</a>\n'
 hd = '<H1>'  
@@ -546,7 +546,7 @@ li = '<LI>'
 dn = '</BODY>\n </HTML>\n'
 
 
-# In[36]:
+# In[10]:
 
 ##output room files
 #TODO:  add in hydgene link
@@ -629,12 +629,12 @@ for room in rooms:
 #dfroomout.replace(np.nan,' ')
 
 
-# In[37]:
+# In[11]:
 
 #dfroomout['msds_file']
 
 
-# In[38]:
+# In[12]:
 
 ##chmod for msds and Lab_specific blah
 #files = glob.glob(msdsdir+'*')
@@ -653,12 +653,15 @@ for room in rooms:
 #        os.chmod(file, mod)
 
 
-# In[39]:
+# In[27]:
 
 ##output flat
 dfout.replace(np.nan,' ',inplace=True)
 ofile = htmldir+'flat.html'
-remove(ofile)
+if os.path.isfile(ofile)  == True:
+    remove(ofile)
+else:
+    pass
 with open(ofile, 'w') as f:
     f.write( tp)
     f.write(dfout.style.applymap(highlight_vals, subset=['regtype']).set_table_attributes("border=1").render())
@@ -667,7 +670,7 @@ with open(ofile, 'w') as f:
 os.chmod(ofile, mod)
 
 
-# In[40]:
+# In[14]:
 
 datestamp ='Website last updated:  '+ time.strftime("%Y-%m-%d %H:%M")
 #write master sds file index file
@@ -707,7 +710,7 @@ os.chmod(sdsfile,mod)
 #os.chmod(ofile, mod)# i don't have ownership to this file
 
 
-# In[41]:
+# In[15]:
 
 #print(room,file,link)
 #file.split('/')[-1].split('_')[-1].split('.')[0]
@@ -718,25 +721,25 @@ os.chmod(sdsfile,mod)
 #room
 
 
-# In[42]:
+# In[16]:
 
 #roomdf.head()
 #roomdf.to_html(col_space=12)
 
 
-# In[43]:
+# In[17]:
 
 #rooms = roomsarray.tolist()
 #print(rooms)
 
 
-# In[44]:
+# In[18]:
 
 #fname = '/wwbintz/public_html/msds/7664-93-9_290000acs.pdf'
 #webmsdsdir+fname.split('/')[-1]
 
 
-# In[45]:
+# In[19]:
 
 msg = 'website complete at '
 etime = time.strftime("%Y-%m-%d %H:%M")
