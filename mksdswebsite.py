@@ -1,17 +1,40 @@
 
 # coding: utf-8
 
-# In[25]:
+# In[322]:
 
 import tkinter as tk
 import sqlite3
 import numpy as np
 import pandas as pd
+from pandas import HDFStore
+
+#import pubchempy as pcp
+#import json
+
+#from urllib.request import urlopen
+#import urllib
+#from urllib.request import urlopen
+#from bs4 import BeautifulSoup
+
+
+#from rdkit import Chem
+#from rdkit.Chem.Draw import IPythonConsole
+#from rdkit.Chem import Draw
+#from rdkit.Chem import PandasTools
+
+
+
+
+
 import os as os
 from os import system, path, remove
 import glob
 import time
 import shutil
+
+
+
 
 import platform
 host = platform.node()
@@ -34,6 +57,11 @@ if host == 'boron':
     safetyplansdir = htmldir+'Lab_Specific_Hygiene_Plans/'
     safetyplansnoplan = './noplans.html'
     msdsdir = htmldir+'msds/'
+    roomfile = home+'etc/allrooms.dat'
+    cheminfodir = htmldir+'cheminfo/'
+    cheminfodata = home+'cheminfodata/'
+    evacplandir = home+'evac_plans/'
+    webevacplandir = webhtmldir+'evac_plans/'
     
 elif host == 'msds.wcu.edu':
     home = '/wwbintz/'
@@ -45,6 +73,10 @@ elif host == 'msds.wcu.edu':
     msdsdir = htmldir+'msds/'
     webmsdsdir = webhtmldir+'msds/'
     websafetyplansdir = webhtmldir+'Lab_Specific_Hygiene_Plans/'
+    roomfile = home+'matinsy/etc/allrooms.dat'
+    cheminfodir = htmldir+'cheminfo/'
+    cheminfodata = home+'matinsy/cheminfodata/'
+    webevacplandir = webhtmldir+'evac_plans/'
 else:
     pass
 
@@ -55,12 +87,12 @@ bmsg = ' websync beginning '
 print(host,bmsg,btime)
 
 
-# In[2]:
+# In[323]:
 
 storagedict = {'g':"General",'w':"Corrosive",'r':'Flammable','y':'Oxidizer','b':'Toxic','none':'none or null: checkme','blank':'blank:checkme','hw':'hw:fixme','2':'2:fixme','1':'1:fixme','3':'3:fixme','4':'4:fixme','unk':'unk:fixme','na':'na:fixme','[CH2CH(CH2NH2•HCl)]n':'[CH2CH(CH2NH2•HCl)]n:fixme'}
 
 
-# In[3]:
+# In[324]:
 
 ###delete old html files
 #TODO: make into function
@@ -90,7 +122,7 @@ def deloldhtmlfiles():
             print("Error: {0} {1} - %s.".format(e.filename,e.strerror) )
 
 
-# In[4]:
+# In[325]:
 
 
 
@@ -100,9 +132,8 @@ room = 'NS322'
 #print(rooms)
 def getdirfromroom(room):
     
-    #dirroom =  glob.glob("./safetyplans/"+room+'*')[0]
-    #print(dirroom)
-    files = glob.glob(safetyplansdir+room+'*/*')
+    #files = glob.glob(safetyplansdir+room+'*/*')
+    files = glob.glob(safetyplansdir+room+'*/*.pdf')# only pdf files
     #print(files)
     if not files:
         files = [safetyplansnoplan]
@@ -118,7 +149,7 @@ def mkfiles4web(files):
         webfiles.append('/'.join(file.split('/')[-2:]))
     return webfiles
 
-def getevaclink(room):
+def getevaclink_org(room):
     ###find evac plan
     files =  getdirfromroom(room)
     files = mkfiles4web(files)
@@ -127,6 +158,19 @@ def getevaclink(room):
     if not ind:
         ind = [0]
     evaclink = '<a href='+websafetyplansdir+files[ind[0]]+'> Evacuation Plan </a>'
+    return evaclink
+
+def getevaclink(room):
+    ###find evac plan
+    rmdict = {'not':'noplans.html',  'NS':'NSB_Evac_Complete.pdf','ST':'Stillwell_Evac_Complete.pdf','MK':'McKee_Evac_Complete.pdf'}
+    rmkey = room[:2]
+    if rmkey not in ['BA','HB','HH','MR','de']:
+        
+        file = webevacplandir+rmdict[rmkey]
+        evaclink = '<a href='+file+'> Evacuation Plan </a>'
+    else:
+        file = webevacplandir+rmdict['not']
+        evaclink = '<a href='+file+'> Evacuation Plan </a>'
     return evaclink
 
 def getchplink(room):
@@ -170,7 +214,74 @@ def getsoplinks(room):
 #file
 
 
-# In[5]:
+# In[326]:
+
+def mkweblink(webaddress,text):
+    link = '<A HREF='+ webaddress +'>'+text+'</A>'
+    return link
+def getsdsfilename(CAS,reorder):
+    flag = ''#g2g'   #good to go
+    msdsbase = msdsdir
+    if CAS ==None:
+        CAS = 'none' #generic
+        flag = 'dbnoCAS'
+        #CAS = ''
+    
+    if reorder==None:
+        #reorder='none' #generic
+        reorder = 'none'
+        #altfname =  CAS +'.pdf'
+        flag = 'dbnoreorder'    ### db contains no reorder number old style sds file is the 
+        
+    altfname =  CAS +'.pdf'
+    fname = CAS+'_'+reorder +'.pdf'
+    #else:
+        #fname = CAS+'_'+reorder +'.pdf'
+    #if tmp[-4:] == None:
+    #    fname = tmp[:-5]
+    #else:
+    #    fname = tmp
+
+    #fname += '.pdf'
+    sdsfilename = msdsbase + fname
+    webfname = webmsdsdir+fname.split('/')[-1] ##check what this does
+    sdsaltfilename = msdsbase + altfname
+    webaltfname = webmsdsdir+altfname.split('/')[-1] ##check what this does
+    #print(webfname)
+    
+    #if flag == 'g2g':
+    if path.isfile(sdsfilename) == True:
+        link = mkweblink(webfname,fname)
+            #link = '<A HREF='+ webfname +'>'+fname+'</A>'
+        message = flag + ''
+            
+    elif path.isfile(sdsaltfilename) == True:
+        link = mkweblink(webaltfname,altfname)
+        message = flag+'  No product specific SDS' 
+    else:
+        link = ''#mkweblink(webfname,fname)
+        message = flag+ ' missing sds file =>'+fname
+    #link = '<A HREF='+ webfname +'>'+fname+'</A>'
+    #if path.isfile(sdsfilename) == True:
+    #    missing = ''
+    #    flag = 0
+    #    pass
+    #else:
+    #    missing = fname
+    #print(CAS,reorder)
+    return link,message
+
+CAS = '10025-77-1__'
+reorder = 's25317a'
+reorder = None
+CAS = '91-17-8'
+CAS = None
+reorder = '36117'
+link,missing = getsdsfilename(CAS,reorder)
+#print(link,missing)
+
+
+# In[327]:
 
 def getstorage(CAS,dbfile):
     conn = sqlite3.connect(dbfile)
@@ -249,41 +360,7 @@ def getregtype(CAS,dbfile):
     c.close()
     return regtype  #chemname,CAS,reorder,CATID
 
-def getsdsfilename(CAS,reorder):
-    #conn = sqlite3.connect(dbfile)
-    #c = conn.cursor()
-    #c.execute('select reorder,CAS from Bot where CATID=?',[CATID])
-    #tmp = c.fetchall()
-    #if tmp1:
-    #    reorder = tmp1[0][0]
-    #else:
-    #    reorder = 'none'
-    #CAS = tmp1[0][1]
-    #print(CATID,'tmp',tmp1[0])
-    
-    #conn.commit()
-    #c.close()
-    if CAS ==None:
-        CAS = 'none' #generic
-    msdsbase = msdsdir
-    if reorder==None:
-        reorder='none' #generic
-    tmp = msdsbase + CAS+'_'+reorder
-    if tmp[-4:] == None:
-        fname = tmp[:-5]
-    else:
-        fname = tmp
 
-    fname += '.pdf'
-    sdsfilename = fname
-    webfname = webmsdsdir+fname.split('/')[-1] 
-    link = '<A HREF='+ webfname +'>'+'LINK'+'</A>'
-    if path.isfile(fname) == True:
-        missing = ''
-        pass
-    else:
-        missing = fname
-    return link,missing
 
 def writehtml(ofile,df,roomdf):
     room = df.room.unique()
@@ -299,7 +376,7 @@ def writehtml(ofile,df,roomdf):
     nfpatable = roomdf.to_html(na_rep='0', col_space=12)##ask wes about this
     out = ' '.join(('<HTML>\n <HEAD><TITLE>SDS chemical inventory  </TITLE>         </HEAD>\n<BODY>\n <H1> ',room,
         '</H1><H2>Evaculation plans </H2>',evaclink,                    \
-        '<H2> Hygene plans  </H2>',chplink, soplink,                     \
+        '<H2> Copies of Hygene plans and Standard Operating Procedures </H2>',chplink, soplink,                     \
         '<H2> NFPA max scores </H2>',nfpatable,
         "<H2> Chemical Inventory </H2>\n    \
         \n<H4 style=\"color:red\" > RED Column (regtype) indicates Potentially Hazardous Substance warnings</H4>\n    \
@@ -362,7 +439,7 @@ def getallbots(dbfile):
     return d
 
 
-# In[6]:
+# In[328]:
 
 
 d = getallbots(dbfile)
@@ -373,8 +450,10 @@ df.rename(columns={0:'room',1:'CAS',2:'reorder',3:'name',4:'Manufacturer'},inpla
 df.index.name = 'CATID'
 df['regtype'] = None
 df['msds_file'] = None
-df['missing info'] = None
+df['messages'] = None
 df['storage'] = None
+#df['chemclass'] = None   #cameo
+print(df['CAS'][df.index == 110586])
 
 roomsdf = df.room.unique()
 roomslist = roomsdf.tolist()
@@ -401,13 +480,31 @@ for CATID in df.index:
     reorder = df.loc[CATID].reorder
     regtype = getregtype(CAS,dbfile)
     HC = getstorage(CAS,dbfile)
-    link,missing = getsdsfilename(CAS,reorder)
+    link,message = getsdsfilename(CAS,reorder)
     missinglist.append(missing)
     df.set_value(CATID,'storage',HC)
     df.set_value(CATID,'regtype',regtype)
     df.set_value(CATID,'msds_file',link)
-    df.set_value(CATID,'missing info',missing)
+    df.set_value(CATID,'messages',message)
    
+
+
+
+#######other links put this accessable via cheminfo webpage
+#df['chemclass'] = None   #cameo
+#store = HDFStore(cheminfodata+'store.h5')
+#dfs = store['dfstruct']  # load it
+#dfs = dfs[['name','cid','smiles']]
+#PandasTools.AddMoleculeColumnToFrame(dfs,'smiles','Molecule',includeFingerprints=True)
+
+#rgn = 31
+#paturl = '<a href=https://cameochemicals.noaa.gov/react/'+'{0}'.format(rgn)+ '> CAMEO </a>'
+#smilepat = 'C1=CC=C(C=C1)O'  #phenol
+#pat = Chem.MolFromSmiles(smilepat)
+#founddf = dfs[dfs['Molecule'] >=pat]
+#caswithpat = founddf.index.tolist()
+#df['chemclass'][df['CAS'].isin(caswithpat)] = paturl
+
 
 
 # concat reorder and manufacuture
@@ -425,6 +522,10 @@ for item in dumplist:
 dfout = df[mask].sort_values('room')
 
 
+#filter out hazardous waste bottles from inventory
+#mask = ~df.CAS.str.contains('0-0-0000')
+#dfout = dfout[mask]
+
 #dfrooms = {}# put here room specific hygene plan, evac plans, nfps
 
 #print(dfout['room'])
@@ -437,8 +538,12 @@ dfout = df[mask].sort_values('room')
 #    missing = fname
 
 
-# In[7]:
+# In[329]:
 
+#df[df['reorder'] == 'None']
+#df.head()
+#dfout[['CAS','reorder']]
+#dfout[dfout['CAS'] == '77-09-8']
 #dfout
 #CAS = '110-82-7'
 #room = 'NS205'#
@@ -453,7 +558,222 @@ dfout = df[mask].sort_values('room')
 #        hazdict[CAS] = [H,F,R,S]
 
 
-# In[8]:
+# In[330]:
+
+tp = '<HTML>\n <HEAD><TITLE>SDS chemical inventory searchable </TITLE></HEAD>\n<BODY>\n<H1 style=\"color:red\" > College of Arts and Sciences Chemical Inventory</H1>\n<H2>Survey for Acknowlegment link of Safety Training</H2> <a href="https://wcu.az1.qualtrics.com/jfe/form/SV_9AIPM7mTueMaA8B">Survey Link</a>\n'
+hd = '<H1>'  
+he = '</H1>\n'
+lt = '<UL>'
+le = '</UL>'
+li = '<LI>'
+dn = '</BODY>\n </HTML>\n'
+
+
+# In[331]:
+
+def findmaxhaz(L):
+    newL = []
+    for code in set(L):
+        #print(code)
+        try:
+            val = int(code)
+        except ValueError:
+            pass
+        else:
+            newL.append(val)
+    maxhaz = np.max(newL)
+    return maxhaz
+
+def findShazmat(L):
+    if 'w' in L:
+        Shazmat = 'Water Reactive'
+    else:
+        Shazmat = ''
+    return Shazmat
+
+def mkhazardtable2(room,df):
+    tmpcas = set(df[df['room'] == room]['CAS'])
+    #print(tmpcas)
+    hazdict = {}
+    for i,CAS in enumerate(tmpcas):
+        #print(CAS)
+        H,F,R,S = gethazard(CAS,dbfile)
+        #print(i,H,F,R,S)
+        hazdict[CAS] = [H,F,R,S]
+        #print(hazdict[CAS])
+    #hdf = pd.DataFrame(hazdict,dtype=[int,int,int,str]).T
+    hdf = pd.DataFrame(hazdict,index=['H','F','R','S']).T#,
+    hdf.replace(np.nan,0,inplace=True)
+    hdf.replace('na',0,inplace=True)
+    roomd = {}
+    for hc in ['H','F','R']:
+        L = hdf[hc].tolist()
+        maxhaz = findmaxhaz(L)
+        roomd[hc] = maxhaz
+    
+    LS = list(set(hdf['S']))
+    Shazmat = findShazmat(LS)
+    roomd['S'] = Shazmat
+    roomdf = pd.DataFrame(pd.Series(roomd))
+    roomdf.rename(columns={0:'max score'},inplace=True)
+    #dtypes={'H':'int','F':'int','R':'int','S':'str'}
+    #hdf['S'] = hdf['S'].apply(lambda x: str(x))
+    #hdf.rename(columns={0:'H',1:'F',2:'R',3:'S'},inplace=True)
+    #for c in hdf.columns:
+        #print(hdf[c].astype(dtypes[c]),c,dtypes[c])
+        #hdf[c] = hdf[c].astype(dtypes[c])
+    return roomdf,hdf
+        
+
+
+# In[332]:
+
+##output room files
+
+roomsarray = dfout.room.unique()
+rooms = roomsarray.tolist()
+rooms.remove('')
+#rooms = ['NS202']
+#rooms = ['MR102']
+
+deloldhtmlfiles()  ###delete old room files
+for room in rooms:
+    dfroomout = dfout[dfout.room == room].replace(np.nan,' ')
+    mask = ~dfroomout.CAS.str.contains('0-0-0000')#filter out waste
+    dfroomout = dfroomout[mask]
+    mask = ~dfroomout.CAS.str.contains('1-0-0001')#filter out blank
+    dfroomout = dfroomout[mask]
+    if dfroomout.empty:
+        pass
+    else:
+        #print('room',room)
+        roomdf,hdf = mkhazardtable2(room,dfroomout)
+        ofile = htmldir+'sds_'+room +'.html'
+        #writehtml(ofile,dfroomout.sort_values('name'),roomdf)
+        writehtml(ofile,dfroomout.sort_values(['storage','name']),roomdf)
+        
+
+        
+
+
+# In[333]:
+
+#df[df.index == 110586]
+
+
+# In[334]:
+
+##output flat
+dfout.replace(np.nan,' ',inplace=True)
+ofile = htmldir+'flat.html'
+if os.path.isfile(ofile)  == True:
+    remove(ofile)
+else:
+    pass
+with open(ofile, 'w') as f:
+    f.write( tp)
+    f.write(dfout.style.applymap(highlight_vals, subset=['regtype']).set_table_attributes("border=1").render())
+    f.write(dn)
+
+os.chmod(ofile, mod)
+
+
+# In[335]:
+
+datestamp ='Website last updated:  '+ time.strftime("%Y-%m-%d %H:%M")
+#write master sds file index file
+tp = '<HTML>\n <HEAD><TITLE>SDS chemical inventory  </TITLE></HEAD>\n<BODY>\n<H1 style=\"color:red\" > Links in RED are Potentially Hazardous Substances</H1>\n<H2>See the last words in each red link for additional info</H2>\n'
+tp = '<HTML>\n <HEAD><TITLE>SDS chemical inventory searchable </TITLE></HEAD>\n<BODY>\n<H1 style=\"color:red\" > College of Arts and Sciences Chemical Inventory</H1>\n<H2>Survey for Acknowlegment link of Safety Training</H2> <a href="https://wcu.az1.qualtrics.com/jfe/form/SV_9AIPM7mTueMaA8B">Survey Link</a>\n'
+dn = '</BODY>\n </HTML>\n'
+lt = '<UL>'
+le = '</UL>'
+li = '<LI>'
+ofile = htmldir+'index.html'
+htmlbase=htmldir
+files =  glob.glob(htmldir+"sds_*.html")
+f = open(ofile, 'w')
+f.write( tp)
+f.write(lt)
+flatlink = '<H2><A HREF=flat.html>The Whole Enchilada</A></H2>\n'
+f.write(flatlink)
+for file in np.sort(files):
+    #print(file)
+    #room = file.split('_')[1].split('.')[0] ###old
+    room = file.split('/')[-1].split('_')[-1].split('.')[0]
+    pathfile = webhtmldir+file.split('/')[-1]
+    link = li+'<A HREF='+pathfile+'>'+room+'</A>\n'
+    #print(room)
+    f.write(link)
+f.write(le)
+f.write('<H3> <a href="ZZZ_problems.html">DB Integrety Checks</a></H3>')
+f.write(datestamp)
+f.write(dn)
+f.close()
+
+#copy index.html to sds.html
+sdsfile = htmldir+'sds.html'
+remove(sdsfile)
+shutil.copy2(ofile,sdsfile)
+os.chmod(sdsfile,mod)
+#os.chmod(ofile, mod)# i don't have ownership to this file
+
+
+# In[336]:
+
+msg = 'website complete at '
+etime = time.strftime("%Y-%m-%d %H:%M")
+print(msg,etime)
+
+
+# In[337]:
+
+#rooms = roomsarray.tolist()
+#print(rooms)
+
+
+# In[338]:
+
+#fname = '/wwbintz/public_html/msds/7664-93-9_290000acs.pdf'
+#webmsdsdir+fname.split('/')[-1]
+
+
+# In[339]:
+
+#roomdf.head()
+#roomdf.to_html(col_space=12)
+
+
+# In[340]:
+
+##chmod for msds and Lab_specific blah
+#files = glob.glob(msdsdir+'*')
+#for file in files:
+#    os.chmod(file, mod)
+#    
+#dirs = glob.glob(safetyplansdir+'*')
+#for d in dirs:
+#    os.chmod(d, mod)
+#    path = d+'/'
+#    #print(path)
+#    files = glob.glob(path+'*')
+#    #print(files)
+#    for file in files:
+#        #print(file)
+#        os.chmod(file, mod)
+
+
+# In[341]:
+
+#print(room,file,link)
+#file.split('/')[-1].split('_')[-1].split('.')[0]
+#room='NS202'
+#dfroomout = dfout[dfout.room == room]
+#room = dfroomout.room.unique()
+#room = room.tolist()[0]
+#room
+
+
+# In[342]:
 
 #Hdf = pd.DataFrame(hazdict).T
 #Hdf.rename(columns={0:'H',1:'F',2:'R',3:'S'},inplace=True)
@@ -535,218 +855,7 @@ dfout = df[mask].sort_values('room')
 #print(roomdf)
 
 
-# In[9]:
-
-tp = '<HTML>\n <HEAD><TITLE>SDS chemical inventory searchable </TITLE></HEAD>\n<BODY>\n<H1 style=\"color:red\" > College of Arts and Sciences Chemical Inventory</H1>\n<H2>Survey for Acknowlegment link of Safety Training</H2> <a href="https://wcu.az1.qualtrics.com/jfe/form/SV_9AIPM7mTueMaA8B">Survey Link</a>\n'
-hd = '<H1>'  
-he = '</H1>\n'
-lt = '<UL>'
-le = '</UL>'
-li = '<LI>'
-dn = '</BODY>\n </HTML>\n'
-
-
-# In[10]:
-
-##output room files
-#TODO:  add in hydgene link
-#TODO:  add evacuation plans perroom
-roomsarray = dfout.room.unique()
-rooms = roomsarray.tolist()
-rooms.remove('')
-#rooms = ['NS202']
-
-def findmaxhaz(L):
-    newL = []
-    for code in set(L):
-        #print(code)
-        try:
-            val = int(code)
-        except ValueError:
-            pass
-        else:
-            newL.append(val)
-    maxhaz = np.max(newL)
-    return maxhaz
-
-def findShazmat(L):
-    if 'w' in L:
-        Shazmat = 'Water Reactive'
-    else:
-        Shazmat = ''
-    return Shazmat
-
-def mkhazardtable2(room,df):
-    tmpcas = set(df[df['room'] == room]['CAS'])
-    #print(tmpcas)
-    hazdict = {}
-    for i,CAS in enumerate(tmpcas):
-        #print(CAS)
-        H,F,R,S = gethazard(CAS,dbfile)
-        #print(i,H,F,R,S)
-        hazdict[CAS] = [H,F,R,S]
-        #print(hazdict[CAS])
-    #hdf = pd.DataFrame(hazdict,dtype=[int,int,int,str]).T
-    hdf = pd.DataFrame(hazdict,index=['H','F','R','S']).T#,
-    hdf.replace(np.nan,0,inplace=True)
-    hdf.replace('na',0,inplace=True)
-    roomd = {}
-    for hc in ['H','F','R']:
-        L = hdf[hc].tolist()
-        maxhaz = findmaxhaz(L)
-        roomd[hc] = maxhaz
-    
-    LS = list(set(hdf['S']))
-    Shazmat = findShazmat(LS)
-    roomd['S'] = Shazmat
-    roomdf = pd.DataFrame(pd.Series(roomd))
-    roomdf.rename(columns={0:'max score'},inplace=True)
-    #dtypes={'H':'int','F':'int','R':'int','S':'str'}
-    #hdf['S'] = hdf['S'].apply(lambda x: str(x))
-    #hdf.rename(columns={0:'H',1:'F',2:'R',3:'S'},inplace=True)
-    #for c in hdf.columns:
-        #print(hdf[c].astype(dtypes[c]),c,dtypes[c])
-        #hdf[c] = hdf[c].astype(dtypes[c])
-    return roomdf,hdf
-        
-
-deloldhtmlfiles()  ###delete old room files
-for room in rooms:
-    dfroomout = dfout[dfout.room == room].replace(np.nan,' ')
-    if dfroomout.empty:
-        pass
-    else:
-        #print('room',room)
-        roomdf,hdf = mkhazardtable2(room,dfroomout)
-        ofile = htmldir+'sds_'+room +'.html'
-        #writehtml(ofile,dfroomout.sort_values('name'),roomdf)
-        writehtml(ofile,dfroomout.sort_values(['storage','name']),roomdf)
-        
-
-        
-#nfpasdict = {'w':"Water Reactive",'W':'Water Reactive','ox':' ','na':' '}
-#roomdf,hdf = mkhazardtable2(room,dfout
-#dfroomout.replace(np.nan,' ')
-
-
-# In[11]:
-
-#dfroomout['msds_file']
-
-
-# In[12]:
-
-##chmod for msds and Lab_specific blah
-#files = glob.glob(msdsdir+'*')
-#for file in files:
-#    os.chmod(file, mod)
-#    
-#dirs = glob.glob(safetyplansdir+'*')
-#for d in dirs:
-#    os.chmod(d, mod)
-#    path = d+'/'
-#    #print(path)
-#    files = glob.glob(path+'*')
-#    #print(files)
-#    for file in files:
-#        #print(file)
-#        os.chmod(file, mod)
-
-
-# In[27]:
-
-##output flat
-dfout.replace(np.nan,' ',inplace=True)
-ofile = htmldir+'flat.html'
-if os.path.isfile(ofile)  == True:
-    remove(ofile)
-else:
-    pass
-with open(ofile, 'w') as f:
-    f.write( tp)
-    f.write(dfout.style.applymap(highlight_vals, subset=['regtype']).set_table_attributes("border=1").render())
-    f.write(dn)
-
-os.chmod(ofile, mod)
-
-
-# In[14]:
-
-datestamp ='Website last updated:  '+ time.strftime("%Y-%m-%d %H:%M")
-#write master sds file index file
-tp = '<HTML>\n <HEAD><TITLE>SDS chemical inventory  </TITLE></HEAD>\n<BODY>\n<H1 style=\"color:red\" > Links in RED are Potentially Hazardous Substances</H1>\n<H2>See the last words in each red link for additional info</H2>\n'
-tp = '<HTML>\n <HEAD><TITLE>SDS chemical inventory searchable </TITLE></HEAD>\n<BODY>\n<H1 style=\"color:red\" > College of Arts and Sciences Chemical Inventory</H1>\n<H2>Survey for Acknowlegment link of Safety Training</H2> <a href="https://wcu.az1.qualtrics.com/jfe/form/SV_9AIPM7mTueMaA8B">Survey Link</a>\n'
-dn = '</BODY>\n </HTML>\n'
-lt = '<UL>'
-le = '</UL>'
-li = '<LI>'
-ofile = htmldir+'index.html'
-htmlbase=htmldir
-files =  glob.glob(htmldir+"sds_*.html")
-f = open(ofile, 'w')
-f.write( tp)
-f.write(lt)
-flatlink = '<H2><A HREF=flat.html>The Whole Enchilada</A></H2>\n'
-f.write(flatlink)
-for file in np.sort(files):
-    #print(file)
-    #room = file.split('_')[1].split('.')[0] ###old
-    room = file.split('/')[-1].split('_')[-1].split('.')[0]
-    pathfile = webhtmldir+file.split('/')[-1]
-    link = li+'<A HREF='+pathfile+'>'+room+'</A>\n'
-    #print(room)
-    f.write(link)
-f.write(le)
-f.write('<H3> <a href="ZZZ_problems.html">DB problems</a></H3>')
-f.write(datestamp)
-f.write(dn)
-f.close()
-
-#copy index.html to sds.html
-sdsfile = htmldir+'sds.html'
-remove(sdsfile)
-shutil.copy2(ofile,sdsfile)
-os.chmod(sdsfile,mod)
-#os.chmod(ofile, mod)# i don't have ownership to this file
-
-
-# In[15]:
-
-#print(room,file,link)
-#file.split('/')[-1].split('_')[-1].split('.')[0]
-#room='NS202'
-#dfroomout = dfout[dfout.room == room]
-#room = dfroomout.room.unique()
-#room = room.tolist()[0]
-#room
-
-
-# In[16]:
-
-#roomdf.head()
-#roomdf.to_html(col_space=12)
-
-
-# In[17]:
-
-#rooms = roomsarray.tolist()
-#print(rooms)
-
-
-# In[18]:
-
-#fname = '/wwbintz/public_html/msds/7664-93-9_290000acs.pdf'
-#webmsdsdir+fname.split('/')[-1]
-
-
-# In[19]:
-
-msg = 'website complete at '
-etime = time.strftime("%Y-%m-%d %H:%M")
-print(msg,etime)
-
-
-# In[20]:
+# In[343]:
 
 #python script.py >> /wwbintz/matinsy/var/websync.log 2>&1
 
