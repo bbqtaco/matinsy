@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[1]:
+# In[2]:
 
 #import tkinter as tk
 import sqlite3
@@ -78,7 +78,7 @@ bmsg = ' db integrety checking beginning '
 print(host,bmsg,btime)
 
 
-# In[2]:
+# In[3]:
 
 def highlight_vals(val):
     if val != 'none':
@@ -90,7 +90,7 @@ def highlight_vals(val):
 # ## definitions
 # 
 
-# In[3]:
+# In[4]:
 
 def getallbots(dbfile):
     conn = sqlite3.connect(dbfile)
@@ -174,7 +174,7 @@ def casvalidlist(caslist):
     return validlist,invalidlist,exceptlist,wescas
 
 
-# In[4]:
+# In[5]:
 
 #dd = getallbots(dbfile)
 #ddf = pd.DataFrame.from_dict(dd, orient='index')
@@ -195,7 +195,7 @@ def casvalidlist(caslist):
 
 # ## Missing INFO
 
-# In[5]:
+# In[6]:
 
 d = getallbots(dbfile)
 df = pd.DataFrame.from_dict(d, orient='index')
@@ -213,14 +213,14 @@ df_noREORDER = df_noREORDER[~df_noREORDER.room.str.contains('neut')].sort_values
 outdict = {'noCAS':df_noCAS,'noROOM':df_noROOM,'noREORDER':df_noREORDER,'noName':df_noNAME}
 
 
-# In[6]:
+# In[7]:
 
 #df_noREORDER[~df_noREORDER.room.str.contains('combin')]
 
 
 # ## CAS problems
 
-# In[7]:
+# In[8]:
 
 caslist = list(filter(None,set(df['CAS'].tolist())))
 valid,invalid,exclist,wescas = casvalidlist(caslist)
@@ -237,7 +237,7 @@ outdict['Wes CAS'] = dfwescas
 
 # ## Rooms that aren't correct
 
-# In[8]:
+# In[9]:
 
 ##this realrooms should be readable from a config file
 realrooms = 'NS102 NS102A NS103 NS105 NS106  NS108 NS110 NS114 NS118 NS119A NS119B NS119C NS122 NS127 NS129 NS202 NS204 NS205 NS207 NS208 NS209 NS214 NS216 NS216A NS217 NS218 NS220 NS221 NS226 NS227 NS302 NS304 NS307 NS308A NS309 NS311 NS312 NS314 NS315 NS317 NS322 NS323 NS324 NSG NSG02 NSG03 NSG04 NSG05 NSG10 NSG14 NSG17 ST114 ST115 ST116 ST118 ST119 ST120 ST121 ST122 ST124 ST125 ST126 ST127 ST130 ST131 ST132 ST134 ST136 ST153 ST155 ST157 ST157A ST157B ST159 ST201 ST209 ST210 ST212 ST214 ST215 ST218 ST219 ST220 ST220A ST220B ST303 ST304 ST305 ST306 ST309 ST312 ST314 ST315 ST323 ST355 ST401 ST403 ST404 ST405 ST409 ST412 ST413 ST415 ST419 ST420'
@@ -279,12 +279,26 @@ outdict['bad rooms'] = df.loc[badroomcatid].sort_values('room')
 
 # ## output html report file
 
-# In[ ]:
+# In[34]:
+
+#<a name="chapter4"></a> 
+anpre ='<a name= "'
+anpost1 = '">'
+anpost2 = '</a> '
+anchorsdict = {}
+toc = {}
+for key,dfout in outdict.items():
+    anchorsdict[key] = anpre+key+anpost1+anpost2
+    toc[key] = '<li> <a href=" #'+key+' "> '+ key +'</a>\n'
 
 
+# In[35]:
+
+toc['noCAS']
+anchorsdict['noCAS']
 
 
-# In[9]:
+# In[39]:
 
 #dfout.replace(np.nan,' ',inplace=True)
 hd = '<H1 style=color:red>\n'  
@@ -296,10 +310,16 @@ else:
     pass
 with open(ofile, 'w') as f:
     f.write( tp)
+    f.write('<H1 style=color:purple> Sections</H1>')
+    for key in toc:
+        f.write('<ul>')
+        f.write(toc[key])
+        f.write('</ul>')
     for key,dfout in outdict.items():
-        print(key)
+        #print(key)
         f.write(hd)
         f.write(key)
+        f.write(anchorsdict[key])
         f.write(he)
         f.write(dfout.to_html())
         
@@ -308,7 +328,7 @@ with open(ofile, 'w') as f:
 os.chmod(ofile, mod)
 
 
-# In[10]:
+# In[12]:
 
 etime = time.strftime("%Y-%m-%d %H:%M")
 emsg = ' db integrety checking ending '
