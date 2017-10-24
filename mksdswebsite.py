@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[1]:
+# In[24]:
 
 import tkinter as tk
 import sqlite3
@@ -87,12 +87,12 @@ bmsg = ' websync beginning '
 print(host,bmsg,btime)
 
 
-# In[2]:
+# In[25]:
 
 storagedict = {'g':"General",'w':"Corrosive",'r':'Flammable','y':'Oxidizer','b':'Toxic','none':'none or null: checkme','blank':'blank:checkme','hw':'hw:fixme','2':'2:fixme','1':'1:fixme','3':'3:fixme','4':'4:fixme','unk':'unk:fixme','na':'na:fixme','[CH2CH(CH2NH2•HCl)]n':'[CH2CH(CH2NH2•HCl)]n:fixme'}
 
 
-# In[3]:
+# In[26]:
 
 ###delete old html files
 #TODO: make into function
@@ -122,7 +122,7 @@ def deloldhtmlfiles():
             print("Error: {0} {1} - %s.".format(e.filename,e.strerror) )
 
 
-# In[26]:
+# In[27]:
 
 def getevaclinkNSB(room):
     NL = ['109','110','111','112','113','114','115','116','119A','119B','119C','123','125']
@@ -137,6 +137,8 @@ def getevaclinkNSB(room):
     plandict['NSGN'] = 'NSB_Evac_Complete.pdf#page=7'
     plandict['NSGS'] = 'NSB_Evac_Complete.pdf#page=8'
     plandict['NSGM'] = 'NSB_Evac_Complete.pdf#page=9'
+    
+    plandefault = 'NSB_Evac_Complete.pdf'
     
     blkey = room[:2]
     flkey = room[2]
@@ -154,16 +156,16 @@ def getevaclinkNSB(room):
         pass
     else:
         blflkey = blkey+flkey+'00'+'N'
-        Nfile = webevacplandir+plandict[blflkey]
+        Nfile = webevacplandir+plandict.get(blflkey,plandefault)
         blflkey = blkey+flkey+'00'+'S'
-        Sfile = webevacplandir+plandict[blflkey]
+        Sfile = webevacplandir+plandict.get(blflkey,plandefault)
         evaclink = '<ul> <li><a href='+Nfile+'> Northside Evacuation Plan </a><li> <a href='+Sfile+'> Southside Evacuation Plan </a></ul>'
     
     return evaclink
-#getevaclinkNSB('NS400N')
+getevaclinkNSB('NS423')
 
 
-# In[24]:
+# In[28]:
 
 
 
@@ -302,7 +304,7 @@ def getcheminfolink(room):
 #file
 
 
-# In[6]:
+# In[29]:
 
 def mkweblink(webaddress,text):
     link = '<A HREF='+ webaddress +'>'+text+'</A>'
@@ -369,7 +371,7 @@ link,missing = getsdsfilename(CAS,reorder)
 #print(link,missing)
 
 
-# In[7]:
+# In[30]:
 
 def getstorage(CAS,dbfile):
     conn = sqlite3.connect(dbfile)
@@ -528,7 +530,7 @@ def getallbots(dbfile):
     return d
 
 
-# In[8]:
+# In[31]:
 
 
 d = getallbots(dbfile)
@@ -627,7 +629,7 @@ dfout = df[mask].sort_values('room')
 #    missing = fname
 
 
-# In[9]:
+# In[32]:
 
 #df[df['reorder'] == 'None']
 #df.head()
@@ -647,7 +649,7 @@ dfout = df[mask].sort_values('room')
 #        hazdict[CAS] = [H,F,R,S]
 
 
-# In[10]:
+# In[33]:
 
 tp = '<HTML>\n <HEAD><TITLE>SDS chemical inventory searchable </TITLE></HEAD>\n<BODY>\n<H1 style=\"color:red\" > College of Arts and Sciences Chemical Inventory</H1>\n<H2>Survey for Acknowlegment link of Safety Training</H2> <a href="https://wcu.az1.qualtrics.com/jfe/form/SV_9AIPM7mTueMaA8B">Survey Link</a>\n'
 hd = '<H1>'  
@@ -658,7 +660,7 @@ li = '<LI>'
 dn = '</BODY>\n </HTML>\n'
 
 
-# In[11]:
+# In[34]:
 
 def findmaxhaz(L):
     newL = []
@@ -715,13 +717,17 @@ def mkhazardtable2(room,df):
         
 
 
-# In[12]:
+# In[36]:
 
 ##output room files
 
 roomsarray = dfout.room.unique()
 rooms = roomsarray.tolist()
-rooms.remove('')
+if '' in rooms:
+    rooms.remove('')
+else:
+    pass
+    #rooms.remove('')
 #rooms = ['NS202']
 #rooms = ['NS323']
 
@@ -745,12 +751,12 @@ for room in rooms:
         
 
 
-# In[13]:
+# In[ ]:
 
 #df[df.index == 110586]
 
 
-# In[14]:
+# In[ ]:
 
 ##output flat
 dfout.replace(np.nan,' ',inplace=True)
@@ -767,7 +773,7 @@ with open(ofile, 'w') as f:
 os.chmod(ofile, mod)
 
 
-# In[15]:
+# In[ ]:
 
 datestamp ='Website last updated:  '+ time.strftime("%Y-%m-%d %H:%M")
 #write master sds file index file
@@ -808,32 +814,32 @@ os.chmod(sdsfile,mod)
 #os.chmod(ofile, mod)# i don't have ownership to this file
 
 
-# In[16]:
+# In[ ]:
 
 msg = 'website complete at '
 etime = time.strftime("%Y-%m-%d %H:%M")
 print(msg,etime)
 
 
-# In[17]:
+# In[ ]:
 
 #rooms = roomsarray.tolist()
 #print(rooms)
 
 
-# In[18]:
+# In[ ]:
 
 #fname = '/wwbintz/public_html/msds/7664-93-9_290000acs.pdf'
 #webmsdsdir+fname.split('/')[-1]
 
 
-# In[19]:
+# In[ ]:
 
 #roomdf.head()
 #roomdf.to_html(col_space=12)
 
 
-# In[20]:
+# In[ ]:
 
 ##chmod for msds and Lab_specific blah
 #files = glob.glob(msdsdir+'*')
@@ -852,7 +858,7 @@ print(msg,etime)
 #        os.chmod(file, mod)
 
 
-# In[21]:
+# In[ ]:
 
 #print(room,file,link)
 #file.split('/')[-1].split('_')[-1].split('.')[0]
@@ -863,7 +869,7 @@ print(msg,etime)
 #room
 
 
-# In[22]:
+# In[ ]:
 
 #Hdf = pd.DataFrame(hazdict).T
 #Hdf.rename(columns={0:'H',1:'F',2:'R',3:'S'},inplace=True)
@@ -945,7 +951,7 @@ print(msg,etime)
 #print(roomdf)
 
 
-# In[23]:
+# In[ ]:
 
 #python script.py >> /wwbintz/matinsy/var/websync.log 2>&1
 
